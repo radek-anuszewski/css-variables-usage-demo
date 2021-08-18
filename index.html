@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CSS Variables usage demo</title>
+  <script type="module">
+    const applyVariables = variables => {
+      for (const propertyName in variables) {
+        if (variables.hasOwnProperty(propertyName)) {
+          const pureValue = variables[propertyName];
+
+          const value = isNaN(parseInt(pureValue)) ? pureValue : parseInt(pureValue);
+          document.querySelector(`#${propertyName}`).value = value;
+
+          const valueForHtml = isNaN(parseInt(pureValue)) ? pureValue : `${parseInt(pureValue)}px`;
+          document.documentElement.style.setProperty(propertyName, valueForHtml);
+        }
+      }
+    };
+
+    const pickerOptions = {
+      types: [
+        {
+          description: 'Files with variables',
+          accept: {
+            'application/json': ['.json']
+          }
+        },
+      ],
+      excludeAcceptAllOption: true,
+    };
+
+    const htmlStyles = getComputedStyle(document.documentElement);
+    const variables = [...document.querySelectorAll('input, select')]
+      .filter(el => el.id.startsWith('--'))
+      .reduce((acc, input) => {
+        acc[input.id] = htmlStyles.getPropertyValue(input.id).trim();
+        return acc;
+      }, {});
+
+    applyVariables(variables);
+
+    const form = document.querySelector('form');
+
+    const saveOld = blob => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'variables.json';
+      a.click();
+      setTimeout(() => {
+        URL.revokeObjectURL(url);
+      }, 100);
+    };
+
+    const saveNew = async blob => {
+      const handler = await window.showSaveFilePicker({
+        ...pickerOptions,
+        suggestedName: 'variables.json',
+        startIn: 'documents',
+      });
+      const writable = await handler.createWritable();
+      await writable.write(blob);
+      await writable.close();
+    }
+
+    form.addEventListener('submit', e => {
+      e.preventDefault();
+
+      const result = {};
+      for (const input of e.currentTarget) {
+        if (input.id.startsWith('--')) {
+          const pureValue = input.value
+          result[input.id] = isNaN(parseInt(pureValue)) ? pureValue : `${pureValue}px`;
+        }
+      }
+      const useNewSave = document.querySelector('#new-way-to-save').checked;
+      const blob = new Blob([JSON.stringify(result, null, 2)], {type: 'text/application/json'});
+      if (useNewSave) {
+        saveNew(blob);
+      }
+      else {
+        saveOld(blob);
+      }
+    });
+
+    form.addEventListener('change', e => {
+      const input = e.target;
+      const pureValue = input.value.trim();
+      const value = isNaN(parseInt(pureValue))? pureValue : `${parseInt(pureValue)}px`;
+      variables[input.id] = value;
+      document.documentElement.style.setProperty(input.id, value);
+    });
+
+    document.querySelector('#load-old').addEventListener('change', async e => {
+      const fileStr = await e.target.files[0].text();
+      const variables = JSON.parse(fileStr);
+      applyVariables(variables);
+    });
+
+    document.querySelector('#load-new').addEventListener('click', async e => {
+      const [handler] = await window.showOpenFilePicker(pickerOptions);
+      const file = await handler.getFile();
+      const fileStr = await file.text();
+      const variables = JSON.parse(fileStr);
+      applyVariables(variables);
+    });
+  </script>
+  <style>
+    html {
+        --text-color-main: #000000;
+        --text-color-secondary: #808080;
+        --font-size-small: 13px;
+        --font-size-main: 16px;
+        --font-size-big: 23px;
+        --font-size-bigger: 32px;
+        --font-size-huge: 41px;
+        --background-color-main: #add7e5;
+        --button-border-color: #0000ff;
+        --button-border-radius: 4px;
+        --button-padding: 16px;
+    }
+
+    h1, h2, h3 {
+        color: var(--text-color-main)
+    }
+    h1 {
+        font-size: var(--font-size-huge);
+    }
+    h2 {
+        font-size: var(--font-size-bigger);
+    }
+    h3 {
+        font-size: var(--font-size-big);
+    }
+    p {
+        color: var(--text-color-main);
+    }
+    small {
+        color: var(--text-color-secondary);
+        font-size: var(--font-size-small);
+    }
+
+    button {
+        background: var(--background-color-main);
+        padding: var(--button-padding);
+        border: 1px solid var(--button-border-color);
+        border-radius: var(--button-border-radius);
+        cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+<label for="load-old">Load variables (old)</label><input id="load-old" type="file" accept="application/json">
+<br>
+<button id="load-new">Load variables (new)</button>
+<form>
+  <label for="--text-color-main">Text color main</label><input id="--text-color-main" type="color"><br>
+  <label for="--text-color-secondary">Text color secondary</label><input id="--text-color-secondary" type="color"><br>
+  <label for="--font-size-small">Font size small</label><input id="--font-size-small" type="number"><br>
+  <label for="--font-size-main">Font size main</label><input id="--font-size-main" type="number"><br>
+  <label for="--font-size-big">Font size big</label><input id="--font-size-big" type="number"><br>
+  <label for="--font-size-bigger">Font size bigger</label><input id="--font-size-bigger" type="number"><br>
+  <label for="--font-size-huge">Font size huge</label><input id="--font-size-huge" type="number"><br>
+  <label for="--background-color-main">Background color main</label><input id="--background-color-main" type="color"><br>
+  <label for="--button-border-color">Button border color</label><input id="--button-border-color" type="color"><br>
+  <label for="--button-border-radius">Button border radius</label><input id="--button-border-radius" type="number"><br>
+  <label for="--button-padding">Button padding</label><input id="--button-padding" type="number"><br>
+  <label for="new-way-to-save">Use new way to save <input type="checkbox" id="new-way-to-save"></label><br>
+  <button type="submit">
+    Download changes
+  </button>
+</form>
+<h1>
+  Header 1
+</h1>
+<h2>
+  Header 2
+</h2>
+<h3>
+  Header 3
+</h3>
+<p>
+  Paragraph text
+  <br>
+  <small>Small text</small>
+  <br>
+  <button>Some button with text</button>
+</p>
+</body>
+</html>
